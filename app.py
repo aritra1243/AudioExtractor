@@ -592,13 +592,11 @@ def video_converter_download(filename: str):
         as_attachment=as_attachment,
         download_name=download_name,
     )
-
-
 # ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("\n" + "=" * 50)
     print("  AudioExtractor is running!")
-    print("  Open: http://localhost:5000")
+    port = int(os.environ.get("PORT", 5000))
+    print(f"  Open: http://localhost:{port}")
     print("=" * 50 + "\n")
-    app.run(debug=True, use_reloader=False, host="0.0.0.0", port=5000, threaded=True)
-
+    app.run(debug=True, use_reloader=False, host="0.0.0.0", port=port, threaded=True)

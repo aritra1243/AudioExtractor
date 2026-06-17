@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AudioExtractor — AI Stem Separator</title>
+  <meta name="description" content="Upload any song and AI will separate vocals, drums, bass, and instruments into individual tracks you can download." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/index.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><circle cx='20' cy='20' r='19' stroke='%23a78bfa' stroke-width='2' fill='none'/><path d='M13 27V13l18 7-18 7z' fill='%23a78bfa'/></svg>" />
+</head>
+<body>
+  <!-- Animated background orbs -->
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="app-shell">
+    <!-- ── Header ── -->
+    <header class="header">
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+          <circle cx="20" cy="20" r="19" stroke="url(#lg)" stroke-width="2"/>
+          <path d="M13 27V13l18 7-18 7z" fill="url(#lg2)"/>
+          <defs>
+            <linearGradient id="lg" x1="0" y1="0" x2="40" y2="40">
+              <stop stop-color="#a78bfa"/>
+              <stop offset="1" stop-color="#60a5fa"/>
+            </linearGradient>
+            <linearGradient id="lg2" x1="13" y1="13" x2="31" y2="27">
+              <stop stop-color="#a78bfa"/>
+              <stop offset="1" stop-color="#60a5fa"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span class="logo-text">AudioExtractor</span>
+      </div>
+      <p class="header-tagline">AI-powered stem separation in seconds</p>
+    </header>
+
+    <!-- ── Main content ── -->
+    <main class="main">
+
+      <!-- Upload section -->
+      <section id="upload-section" class="upload-section" aria-label="Upload audio file">
+        <div class="upload-zone" id="upload-zone" role="button" tabindex="0"
+             aria-label="Click or drag a song file here to upload">
+          <div class="upload-icon-wrap" aria-hidden="true">
+            <svg class="upload-icon" viewBox="0 0 64 64" fill="none">
+              <circle cx="32" cy="32" r="31" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+              <path d="M32 42V22M22 30l10-10 10 10" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h1 class="upload-title">Drop your song here</h1>
+          <p class="upload-sub">MP3, WAV, FLAC, OGG, M4A, AAC — up to 150 MB</p>
+          <label class="btn-primary" for="file-input" role="button">
+            <span>Choose File</span>
+          </label>
+          <input type="file" id="file-input" accept=".mp3,.wav,.flac,.ogg,.m4a,.aac,.wma"
+                 style="display:none" aria-label="File input" />
+        </div>
+
+        <!-- Stem filter chips -->
+        <div class="stem-filter" id="stem-filter" aria-label="Select stems to separate">
+          <p class="filter-label">Separate into:</p>
+          <div class="chips" role="group">
+            <label class="chip chip-vocals">
+              <input type="checkbox" value="vocals" checked /> 🎤 Vocals
+            </label>
+            <label class="chip chip-drums">
+              <input type="checkbox" value="drums" checked /> 🥁 Drums
+            </label>
+            <label class="chip chip-bass">
+              <input type="checkbox" value="bass" checked /> 🎸 Bass
+            </label>
+            <label class="chip chip-other">
+              <input type="checkbox" value="other" checked /> 🎹 Instruments
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── OR divider ── -->
+      <div class="or-divider" id="or-divider">
+        <span class="or-line"></span>
+        <span class="or-text">or</span>
+        <span class="or-line"></span>
+      </div>
+
+      <!-- ── Pre-separated stems upload section ── -->
+      <section id="presep-section" class="presep-section" aria-label="Upload pre-separated stems">
+        <div class="presep-header">
+          <div class="presep-badge">✦ Skip Separation</div>
+          <h2 class="presep-title">Already have stems?</h2>
+          <p class="presep-sub">Upload your pre-separated files and use all features — voice conversion, effects &amp; download.</p>
+        </div>
+
+        <div class="presep-grid" id="presep-grid">
+
+          <!-- Vocals -->
+          <div class="presep-drop" id="drop-vocals" data-stem="vocals">
+            <div class="presep-drop-inner">
+              <span class="presep-emoji">🎤</span>
+              <span class="presep-stem-name">Vocals</span>
+              <span class="presep-hint">MP3 / WAV / FLAC</span>
+              <label class="presep-choose" for="psep-vocals">Choose file</label>
+              <input type="file" id="psep-vocals" data-stem="vocals" accept=".mp3,.wav,.flac,.ogg,.m4a,.aac" style="display:none" />
+              <div class="presep-file-name hidden" id="psep-name-vocals"></div>
+            </div>
+          </div>
+
+          <!-- Drums -->
+          <div class="presep-drop" id="drop-drums" data-stem="drums">
+            <div class="presep-drop-inner">
+              <span class="presep-emoji">🥁</span>
+              <span class="presep-stem-name">Drums</span>
+              <span class="presep-hint">MP3 / WAV / FLAC</span>
+              <label class="presep-choose" for="psep-drums">Choose file</label>
+              <input type="file" id="psep-drums" data-stem="drums" accept=".mp3,.wav,.flac,.ogg,.m4a,.aac" style="display:none" />
+              <div class="presep-file-name hidden" id="psep-name-drums"></div>
+            </div>
+          </div>
+
+          <!-- Bass -->
+          <div class="presep-drop" id="drop-bass" data-stem="bass">
+            <div class="presep-drop-inner">
+              <span class="presep-emoji">🎸</span>
+              <span class="presep-stem-name">Bass</span>
+              <span class="presep-hint">MP3 / WAV / FLAC</span>
+              <label class="presep-choose" for="psep-bass">Choose file</label>
+              <input type="file" id="psep-bass" data-stem="bass" accept=".mp3,.wav,.flac,.ogg,.m4a,.aac" style="display:none" />
+              <div class="presep-file-name hidden" id="psep-name-bass"></div>
+            </div>
+          </div>
+
+          <!-- Instruments -->
+          <div class="presep-drop" id="drop-other" data-stem="other">
+            <div class="presep-drop-inner">
+              <span class="presep-emoji">🎹</span>
+              <span class="presep-stem-name">Instruments</span>
+              <span class="presep-hint">MP3 / WAV / FLAC</span>
+              <label class="presep-choose" for="psep-other">Choose file</label>
+              <input type="file" id="psep-other" data-stem="other" accept=".mp3,.wav,.flac,.ogg,.m4a,.aac" style="display:none" />
+              <div class="presep-file-name hidden" id="psep-name-other"></div>
+            </div>
+          </div>
+
+        </div><!-- /presep-grid -->
+
+        <div class="presep-footer">
+          <p class="presep-note" id="presep-note">Upload at least one stem file to continue.</p>
+          <button class="btn-load-stems" id="load-stems-btn" disabled>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 1v9M4 6l4 4 4-4M2 14h12" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Load Stems &amp; Open Editor
+          </button>
+        </div>
+      </section>
+
+      <!-- ── OR divider ── -->
+      <div class="or-divider" id="video-divider">
+        <span class="or-line"></span>
+        <span class="or-text">or</span>
+        <span class="or-line"></span>
+      </div>
+
+      <!-- ── Video to MP3 Converter section ── -->
+      <section id="video-converter-section" class="video-converter-section" aria-label="Convert MP4 to MP3">
+        <div class="presep-header">
+          <div class="presep-badge" style="background: linear-gradient(135deg, var(--blue), var(--pink)); color: white;">🎬 Fast Convert</div>
+          <h2 class="presep-title">Convert MP4 to MP3</h2>
+          <p class="presep-sub">Upload any size MP4 video file to extract the audio as a high-quality MP3.</p>
+        </div>
+
+        <div class="video-converter-card">
+          <div class="video-drop-zone" id="video-drop-zone" role="button" tabindex="0"
+               aria-label="Click or drag an MP4 video file here to upload">
+            <div class="video-upload-icon-wrap" aria-hidden="true">
+              <svg class="video-upload-icon" viewBox="0 0 64 64" fill="none" width="48" height="48">
+                <circle cx="32" cy="32" r="31" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+                <path d="M22 28l10-10 10 10M32 18v24M16 46h32" stroke="currentColor" stroke-width="2.5"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h3 class="video-upload-title">Drop your MP4 here</h3>
+            <p class="video-upload-sub">Supports any file size</p>
+            <label class="btn-primary btn-video-choose" for="video-file-input" role="button">
+              <span>Choose Video File</span>
+            </label>
+            <input type="file" id="video-file-input" accept=".mp4,.mkv,.avi,.mov,.flv,.webm,.wmv"
+                   style="display:none" aria-label="Video file input" />
+          </div>
+
+          <!-- Selected file name / progress indicator / download area -->
+          <div id="video-status-container" class="video-status-container hidden">
+            <div class="video-file-info">
+              <span class="video-file-icon">🎬</span>
+              <div class="video-file-meta">
+                <div class="video-file-name" id="video-selected-name">video_file.mp4</div>
+                <div class="video-file-size" id="video-selected-size">0 MB</div>
+              </div>
+              <button class="btn-video-remove" id="btn-video-remove" title="Remove file">✕</button>
+            </div>
+
+            <div class="video-progress-wrap hidden" id="video-progress-wrap">
+              <div class="video-progress-label-row">
+                <span class="video-progress-status" id="video-progress-status">Uploading...</span>
+                <span class="video-progress-pct" id="video-progress-pct">0%</span>
+              </div>
+              <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="progress-fill" id="video-progress-fill" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <div class="video-result-wrap hidden" id="video-result-wrap">
+              <div class="video-result-message">✓ Audio successfully extracted!</div>
+              <audio class="video-audio-preview" id="video-audio-preview" controls></audio>
+              <div class="video-actions">
+                <a class="btn-video-download" id="video-download-btn" href="#" download>
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="margin-right: 6px;">
+                    <path d="M8 1v9M4 6l4 4 4-4M2 14h12" stroke="currentColor" stroke-width="2"
+                          stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  Download MP3
+                </a>
+                <button class="btn-secondary" id="video-convert-another-btn">Convert Another</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="processing-section" class="processing-section hidden" aria-live="polite">
+        <div class="processing-card">
+          <div class="waveform-anim" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <h2 class="processing-title" id="processing-title">Separating stems…</h2>
+          <p class="processing-msg" id="processing-msg">Loading model…</p>
+          <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+               aria-valuenow="0" aria-labelledby="processing-title">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="progress-footer">
+            <span class="progress-pct" id="progress-pct">0%</span>
+            <span class="elapsed-time" id="elapsed-time">0:00</span>
+          </div>
+          <button class="btn-cancel" id="cancel-btn">✕ Cancel</button>
+        </div>
+      </section>
+
+      <!-- Results section (hidden by default) -->
+      <section id="results-section" class="results-section hidden" aria-label="Separated stems">
+        <div class="results-header">
+          <h2 class="results-title">Your Stems Are Ready! 🎉</h2>
+          <div class="results-actions">
+            <button class="btn-merge" id="merge-btn">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="5" cy="4" r="1.5" fill="currentColor"/>
+                <circle cx="11" cy="8" r="1.5" fill="currentColor"/>
+                <circle cx="7" cy="12" r="1.5" fill="currentColor"/>
+              </svg>
+              🎧 Merge &amp; Mix
+            </button>
+            <button class="btn-secondary" id="new-song-btn">↑ New Song</button>
+          </div>
+        </div>
+        <div class="stems-grid" id="stems-grid"></div>
+      </section>
+
+      <!-- ── Mixer / Merge Editor (full-width panel) ── -->
+      <section id="mixer-section" class="mixer-section hidden" aria-label="Stem mixer editor">
+        <div class="mixer-panel" id="mixer-panel">
+
+          <!-- Mixer header -->
+          <div class="mixer-header">
+            <div class="mixer-title-row">
+              <span class="mixer-badge">🎧 Mixer</span>
+              <h2 class="mixer-title">Stem Mixer &amp; Merger</h2>
+              <p class="mixer-sub">Adjust volume, mute tracks, preview live — then render a merged WAV.</p>
+            </div>
+            <button class="mixer-close" id="mixer-close" aria-label="Close mixer">✕ Close</button>
+          </div>
+
+          <!-- Transport bar -->
+          <div class="mixer-transport">
+            <button class="transport-btn" id="mix-play-btn" title="Preview mixed audio">
+              <svg id="mix-play-icon" width="18" height="18" viewBox="0 0 16 16" fill="none">
+                <path d="M5 3l9 5-9 5V3z" fill="currentColor"/>
+              </svg>
+            </button>
+            <button class="transport-btn" id="mix-stop-btn" title="Stop">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <rect x="3" y="3" width="10" height="10" rx="1" fill="currentColor"/>
+              </svg>
+            </button>
+            <div class="transport-time" id="mix-time">0:00</div>
+            <div class="timeline-bar" id="mixer-timeline">
+              <div class="timeline-progress" id="mixer-progress"></div>
+              <div class="timeline-head"   id="mixer-head"></div>
+            </div>
+            <div class="master-vol-wrap">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="color:var(--text-muted)">
+                <path d="M2 5.5h3l4-3v11l-4-3H2V5.5z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <path d="M11 4.5c1.5 1 2.5 2.2 2.5 3.5S12.5 10.5 11 11.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <input type="range" class="master-vol" id="master-vol" min="0" max="200" value="100" title="Master volume" />
+              <span class="master-vol-val" id="master-vol-val">100%</span>
+            </div>
+          </div>
+
+          <!-- Tracks -->
+          <div class="mixer-tracks" id="mixer-tracks">
+            <!-- injected by JS -->
+          </div>
+
+          <!-- Render footer -->
+          <div class="mixer-footer">
+            <div class="mixer-footer-info">
+              <span id="render-status">Adjust the mix above, then render.</span>
+            </div>
+            <button class="btn-render" id="render-btn">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M8 1v9M4 6l4 4 4-4M2 14h12" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Render &amp; Download Mixed WAV
+            </button>
+          </div>
+
+        </div><!-- /mixer-panel -->
+      </section>
+
+      <!-- Error toast -->
+      <div class="error-toast hidden" id="error-toast" role="alert" aria-live="assertive">
+        <span class="error-icon">⚠</span>
+        <span id="error-msg">Something went wrong.</span>
+        <button class="toast-close" id="toast-close" aria-label="Dismiss error">✕</button>
+      </div>
+
+    </main>
+
+    <!-- ── How it works ── -->
+    <section class="how-section" aria-label="How it works">
+      <h2 class="how-title">How it works</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Upload</strong>
+            <p>Drop any song — MP3, WAV, FLAC and more are all supported.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>AI Separation</strong>
+            <p>Facebook's Demucs AI model splits your track into clean stems.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Download</strong>
+            <p>Preview each stem in-browser and download the ones you need.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>Powered by <a href="https://github.com/facebookresearch/demucs" target="_blank" rel="noopener">Demucs</a> — Facebook AI Research</p>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

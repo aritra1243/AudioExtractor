@@ -1,0 +1,15 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Temporary folders
+uploads/
+outputs/
+
+# OS/IDE configs
+.DS_Store
+.idea/
+.vscode/
+Thumbs.db

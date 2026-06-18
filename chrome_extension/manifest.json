@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "AudioExtractor - Local MP4 to MP3",
+  "version": "1.4.0",
+  "description": "Convert MP4 videos to MP3 audio locally in your browser using WebAssembly. No uploads required.",
+  "permissions": [],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  },
+  "sandbox": {
+    "pages": ["sandbox.html"]
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "ffmpeg-core.js",
+        "ffmpeg-core.wasm",
+        "sandbox.html"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

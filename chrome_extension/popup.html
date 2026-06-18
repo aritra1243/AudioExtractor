@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AudioExtractor Local Converter</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 40 40" fill="none">
+          <circle cx="20" cy="20" r="19" stroke="url(#lg)" stroke-width="2"/>
+          <path d="M13 27V13l18 7-18 7z" fill="url(#lg)"/>
+          <defs>
+            <linearGradient id="lg" x1="0" y1="0" x2="40" y2="40">
+              <stop stop-color="#a78bfa"/>
+              <stop offset="1" stop-color="#60a5fa"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span class="logo-text">AudioExtractor</span>
+      </div>
+      <span class="badge">Local Offline Converter</span>
+    </div>
+
+    <div class="upload-zone" id="drop-zone">
+      <div class="icon-wrap">🎬</div>
+      <p class="title">Drag & Drop MP4 Video</p>
+      <p class="sub">or click to choose file</p>
+      <input type="file" id="file-input" accept="video/mp4,video/mkv,video/avi,video/mov,video/webm" style="display: none;">
+    </div>
+
+    <div class="file-details hidden" id="file-details">
+      <span class="file-icon">🎥</span>
+      <div class="file-info">
+        <div class="file-name" id="file-name">video.mp4</div>
+        <div class="file-size" id="file-size">0.0 MB</div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="convert-btn" disabled>Convert to MP3</button>
+
+    <div class="progress-container hidden" id="progress-container">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+      </div>
+      <div class="status-row">
+        <span id="status-text">Starting...</span>
+        <span id="progress-pct">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Sandbox Iframe for processing WebAssembly and workers -->
+  <iframe id="sandbox-iframe" src="sandbox.html" style="display: none;"></iframe>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -35,6 +35,9 @@
           window.parent.postMessage({ status: 'converting' }, '*');
 
           const args = [
+            './ffmpeg',
+            '-nostdin',
+            '-y',
             '-i', 'input_video',
             '-vn',
             '-acodec', 'libmp3lame',

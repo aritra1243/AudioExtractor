@@ -1,5 +1,5 @@
 let selectedFile = null;
-let videoDuration = 0;
+let downloadHandled = false; // Prevent duplicate download triggers
 
 const dropZone = document.getElementById("drop-zone");
 const fileInput = document.getElementById("file-input");
@@ -11,9 +11,101 @@ const progressContainer = document.getElementById("progress-container");
 const progressFill = document.getElementById("progress-fill");
 const statusText = document.getElementById("status-text");
 const progressPct = document.getElementById("progress-pct");
-const sandboxIframe = document.getElementById("sandbox-iframe");
 
-// Handle File Input Interactions
+// ── Restore State on Open ───────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  chrome.runtime.sendMessage({ action: 'getStatus' }, (response) => {
+    if (response && response.status !== 'idle') {
+      // Restore UI to converting state
+      convertBtn.disabled = true;
+      progressContainer.classList.remove("hidden");
+      updateUI(response);
+    }
+  });
+});
+
+// ── Listen for Updates from Background Worker ────────────────────────────────
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === 'statusChanged') {
+    updateUI(message);
+  }
+});
+
+// Update progress bar and texts based on status state
+async function updateUI(state) {
+  const { status, ratio, fileName, error } = state;
+
+  if (status === 'loading') {
+    statusText.textContent = "Initializing WASM Engine...";
+    progressFill.style.width = "10%";
+    progressPct.textContent = "10%";
+  } else if (status === 'writing') {
+    statusText.textContent = "Mounting video file...";
+    progressFill.style.width = "20%";
+    progressPct.textContent = "20%";
+  } else if (status === 'converting') {
+    statusText.textContent = "Extracting audio...";
+    const pct = Math.min(98, Math.round(30 + ratio * 65));
+    progressFill.style.width = `${pct}%`;
+    progressPct.textContent = `${pct}%`;
+  } else if (status === 'reading') {
+    statusText.textContent = "Reclaiming output stream...";
+    progressFill.style.width = "99%";
+    progressPct.textContent = "99%";
+  } else if (status === 'done') {
+    if (downloadHandled) return; // Already handled this conversion's download
+    downloadHandled = true;
+
+    statusText.textContent = "Downloading MP3...";
+    progressFill.style.width = "100%";
+    progressPct.textContent = "100%";
+
+    try {
+      // 1. Retrieve the finished MP3 ArrayBuffer from the shared IndexedDB
+      const mp3Buffer = await getFile('output_mp3');
+      if (mp3Buffer) {
+        // 2. Trigger local download in user browser
+        const blob = new Blob([mp3Buffer], { type: "audio/mp3" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error("Failed to fetch output from db:", err);
+    } finally {
+      // 3. Clear database files to free disk space
+      await deleteFile('input_video').catch(() => {});
+      await deleteFile('output_mp3').catch(() => {});
+
+      // 4. Reset status back to idle
+      chrome.runtime.sendMessage({ action: 'updateStatus', status: 'idle' });
+      
+      statusText.textContent = "Conversion Complete!";
+      setTimeout(() => {
+        progressContainer.classList.add("hidden");
+        convertBtn.disabled = selectedFile === null;
+      }, 4000);
+    }
+  } else if (status === 'error') {
+    statusText.textContent = `Error: ${error}`;
+    statusText.style.color = "#ef4444";
+    
+    // Clear databases
+    await deleteFile('input_video').catch(() => {});
+    await deleteFile('output_mp3').catch(() => {});
+    
+    setTimeout(() => {
+      progressContainer.classList.add("hidden");
+      convertBtn.disabled = selectedFile === null;
+      statusText.style.color = "var(--text-dim)";
+    }, 5000);
+  }
+}
+
+// ── File Upload / Drag & Drop ───────────────────────────────────────────────
 dropZone.addEventListener("click", () => fileInput.click());
 
 dropZone.addEventListener("dragover", (e) => {
@@ -48,136 +140,45 @@ function handleFile(file) {
   convertBtn.disabled = false;
 }
 
-// Convert logic trigger
-convertBtn.addEventListener("click", async () => {
+// ── Convert Event ────────────────────────────────────────────────────────────
+convertBtn.addEventListener("click", () => {
   if (!selectedFile) return;
 
   convertBtn.disabled = true;
   progressContainer.classList.remove("hidden");
+  downloadHandled = false; // Reset for new conversion
   
-  statusText.textContent = "Loading WebAssembly core...";
+  statusText.textContent = "Loading file locally...";
   progressFill.style.width = "5%";
   progressPct.textContent = "5%";
 
-  try {
-    // 1. Fetch local WASM binary (no CORS restrictions inside extension execution contexts)
-    const wasmRes = await fetch(chrome.runtime.getURL("ffmpeg-core.wasm"));
-    if (!wasmRes.ok) throw new Error("Failed to load ffmpeg-core.wasm from extension package.");
-    const wasmBinary = await wasmRes.arrayBuffer();
-
-    statusText.textContent = "Reading video file...";
-    progressFill.style.width = "15%";
-    progressPct.textContent = "15%";
-
-    // 2. Read the user's video file as ArrayBuffer
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const videoBuffer = e.target.result;
+  // Read video file as ArrayBuffer
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const arrayBuffer = e.target.result;
       
-      statusText.textContent = "Initializing Transcoder...";
-      progressFill.style.width = "25%";
-      progressPct.textContent = "25%";
-
-      // Reset video duration tracking
-      videoDuration = 0;
-
-      // 3. Post array buffers to sandboxed iframe using transferable references (instant, no copy memory)
-      sandboxIframe.contentWindow.postMessage({
-        action: 'convert',
-        fileData: videoBuffer,
-        wasmBinary: wasmBinary,
+      // Save input file to local IndexedDB store
+      await setFile('input_video', arrayBuffer);
+      
+      // Notify background script to spawn the offscreen document and start transcode
+      chrome.runtime.sendMessage({
+        action: 'startConvert',
         fileName: selectedFile.name
-      }, '*', [videoBuffer, wasmBinary]);
-    };
-    
-    reader.onerror = function() {
-      throw new Error("Failed to read video file into memory.");
-    };
-
-    reader.readAsArrayBuffer(selectedFile);
-
-  } catch (error) {
-    console.error("Popup initiation error:", error);
-    statusText.textContent = `Error: ${error.message || error}`;
-    statusText.style.color = "#ef4444";
-    convertBtn.disabled = false;
-  }
-});
-
-// Helper to convert time format (HH:MM:SS.ms) to seconds
-function parseTimeToSeconds(timeStr) {
-  const parts = timeStr.trim().split(":");
-  if (parts.length !== 3) return 0;
-  const hrs = parseFloat(parts[0]);
-  const mins = parseFloat(parts[1]);
-  const secs = parseFloat(parts[2]);
-  return (hrs * 3600) + (mins * 60) + secs;
-}
-
-// Listen for messages back from the Sandboxed Iframe
-window.addEventListener('message', (event) => {
-  const { status, ratio, mp3Data, fileName, message, log } = event.data;
-  
-  if (status === 'loading') {
-    statusText.textContent = "Booting WASM Environment...";
-    progressFill.style.width = "30%";
-    progressPct.textContent = "30%";
-  } else if (status === 'writing') {
-    statusText.textContent = "Mounting video file...";
-    progressFill.style.width = "40%";
-    progressPct.textContent = "40%";
-  } else if (status === 'converting') {
-    statusText.textContent = "Extracting audio...";
-    progressFill.style.width = "50%";
-    progressPct.textContent = "50%";
-  } else if (status === 'progress_log') {
-    // Parse FFmpeg stdout streams in real-time to compute conversion percentage
-    // e.g. "  Duration: 00:03:45.00" -> video length
-    // e.g. "frame=  222 ... time=00:01:30.00" -> current position
-    if (log.includes("Duration:")) {
-      const match = log.match(/Duration:\s*(\d{2}:\d{2}:\d{2}\.\d{2})/);
-      if (match) {
-        videoDuration = parseTimeToSeconds(match[1]);
-      }
-    } else if (log.includes("time=") && videoDuration > 0) {
-      const match = log.match(/time=\s*(\d{2}:\d{2}:\d{2}\.\d{2})/);
-      if (match) {
-        const currentTime = parseTimeToSeconds(match[1]);
-        const progress = (currentTime / videoDuration);
-        const pct = Math.min(98, Math.round(50 + progress * 48));
-        progressFill.style.width = `${pct}%`;
-        progressPct.textContent = `${pct}%`;
-      }
-    }
-  } else if (status === 'reading') {
-    statusText.textContent = "Reclaiming output stream...";
-    progressFill.style.width = "99%";
-    progressPct.textContent = "99%";
-  } else if (status === 'done') {
-    statusText.textContent = "Downloading MP3...";
-    progressFill.style.width = "100%";
-    progressPct.textContent = "100%";
-    
-    // Save file locally
-    const blob = new Blob([mp3Data], { type: "audio/mp3" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.click();
-    
-    // Release URL resources
-    URL.revokeObjectURL(url);
-    
-    statusText.textContent = "Conversion Complete!";
-    setTimeout(() => {
-      progressContainer.classList.add("hidden");
+      });
+      
+    } catch (err) {
+      statusText.textContent = `Error: ${err.message || err}`;
+      statusText.style.color = "#ef4444";
       convertBtn.disabled = false;
-    }, 4000);
-  } else if (status === 'error') {
-    console.error("Sandbox conversion error:", message);
-    statusText.textContent = `Error: ${message}`;
+    }
+  };
+  
+  reader.onerror = function() {
+    statusText.textContent = "Error reading video file.";
     statusText.style.color = "#ef4444";
     convertBtn.disabled = false;
-  }
+  };
+
+  reader.readAsArrayBuffer(selectedFile);
 });

@@ -553,8 +553,11 @@ def video_converter_upload_chunk():
             thread.start()
             
             return jsonify({"upload_complete": True, "job_id": job_id})
-            
-        return jsonify({"upload_complete": False})
+
+        # Report upload progress back to client so UI can show it
+        upload_pct = int(((chunk_index + 1) / total_chunks) * 100)
+        return jsonify({"upload_complete": False, "upload_progress": upload_pct})
+
         
     except Exception as exc:
         try:

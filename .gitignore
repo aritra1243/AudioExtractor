@@ -13,3 +13,9 @@ outputs/
 .idea/
 .vscode/
 Thumbs.db
+
+# Chrome extension binary assets (large files, download separately)
+chrome_extension/ffmpeg-core.wasm
+
+# Demucs model cache (downloaded at build time)
+~/.cache/torch/
